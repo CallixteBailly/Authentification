@@ -5,7 +5,7 @@ using MediatR;
 using ErrorOr;
 using Auth.Application.Interface;
 
-namespace Auth.API.Application.Queries;
+namespace Auth.Application.Queries.Login;
 
 public class LoginQueryHandler : IRequestHandler<LoginQuery, ErrorOr<AuthenticationResult>>
 {

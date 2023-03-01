@@ -9,11 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="UnitTest1 - Copy.cs" />
-    <Compile Remove="Usings - Copy.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="AutoFixture" Version="4.17.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="7.0.3" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.4.1" />

@@ -3,8 +3,10 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Auth.Contracts.Authentication;
-using Auth.API.Application.Queries;
 using Auth.API.Application.Commands;
+using Auth.Application.Queries.Login;
+using Auth.Application.Queries.VerifyToken;
+using Mapster;
 
 namespace Auth.Api.Controllers
 {
@@ -44,6 +46,19 @@ namespace Auth.Api.Controllers
 
             return authResult.Match(
                 authResult => Ok(_mapper.Map<AuthenticationResponse>(authResult)),
+                errors => Problem(errors)
+            );
+        }
+
+        [HttpPost("verifyToken")]
+        public async Task<IActionResult> VerifyToken(VerifyTokenRequest request)
+        {
+            var query = _mapper.Map<VerifyTokenQuery>(request);
+
+            var authResult = await _mediator.Send(query);
+
+            return authResult.Match(
+                authResult => Ok(_mapper.Map<bool>(authResult)),
                 errors => Problem(errors)
             );
         }
