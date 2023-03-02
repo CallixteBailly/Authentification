@@ -1,50 +1,35 @@
-using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text;
 using Auth.Domain.Entities;
 using Auth.Infrastructure.Authentication;
+using AutoFixture;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Moq;
-using Xunit;
 
 namespace Auth.Infrastructure.Tests.Authentication
 {
     public class JwtTokenGeneratorTests
     {
-        private readonly Mock<IOptions<JwtSettings>> _jwtOptionsMock;
         private readonly JwtSettings _jwtSettings;
         private readonly JwtTokenGenerator _jwtTokenGenerator;
+		private readonly Fixture _fixture = new();
 
-        public JwtTokenGeneratorTests()
+		public JwtTokenGeneratorTests()
         {
-            _jwtSettings = new JwtSettings
-            {
-                Secret = "MySuperSecretKey",
-                Audience = "MyAudience",
-                Issuer = "MyIssuer",
-                ExpiryMinutes = 30
-            };
-            _jwtOptionsMock = new Mock<IOptions<JwtSettings>>();
-            _jwtOptionsMock.Setup(jwtOptions => jwtOptions.Value).Returns(_jwtSettings);
-
-            _jwtTokenGenerator = new JwtTokenGenerator(_jwtOptionsMock.Object);
+			_fixture = new Fixture();
+			_jwtSettings = _fixture.Create<JwtSettings>();
+			var jwtOptions = Options.Create(_jwtSettings);
+			_jwtTokenGenerator = new JwtTokenGenerator(jwtOptions);
         }
 
         [Fact]
         public void GenerateToken_ShouldReturnValidJwtToken()
         {
-            // Arrange
-            var user = new User
-            {
-                Id = 1,
-                FirstName = "John",
-                LastName = "Doe"
-            };
+			// Arrange
+			var user = _fixture.Create<User>();
 
-            // Act
-            var jwtToken = _jwtTokenGenerator.GenerateToken(user);
+			// Act
+			var jwtToken = _jwtTokenGenerator.GenerateToken(user);
 
             // Assert
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -61,40 +46,99 @@ namespace Auth.Infrastructure.Tests.Authentication
                 ClockSkew = TimeSpan.Zero
             };
 
-            var claimsPrincipal = tokenHandler.ValidateToken(jwtToken, validationParameters, out var _);
+            var claimsPrincipal = tokenHandler.ValidateToken(jwtToken.AccessToken, validationParameters, out var _);
             Assert.NotNull(claimsPrincipal);
         }
+		[Fact]
+		public void GenerateToken_ShouldReturnTokenWithExpiration()
+		{
+			// Arrange
+			var user = _fixture.Create<User>();
 
-        [Fact]
-        public void VerifyToken_WithValidToken_ShouldReturnTrue()
-        {
-            // Arrange
-            var user = new User
-            {
-                Id = 1,
-                FirstName = "John",
-                LastName = "Doe"
-            };
-            var jwtToken = _jwtTokenGenerator.GenerateToken(user);
+			// Act
+			var token = _jwtTokenGenerator.GenerateToken(user);
 
-            // Act
-            var isTokenValid = _jwtTokenGenerator.VerifyToken(jwtToken);
+			// Assert
+			var handler = new JwtSecurityTokenHandler();
+			var decodedToken = handler.ReadJwtToken(token.AccessToken);
+			Assert.NotNull(decodedToken);
+			Assert.True(decodedToken.ValidTo > DateTime.UtcNow);
+		}
+		[Fact]
+		public void GenerateToken_ShouldReturnTokenWithRefreshToken()
+		{
+			// Arrange
+			var user = _fixture.Create<User>();
 
-            // Assert
-            Assert.True(isTokenValid);
-        }
+			// Act
+			var token = _jwtTokenGenerator.GenerateToken(user);
 
-        [Fact]
-        public void VerifyToken_WithInvalidToken_ShouldReturnFalse()
-        {
-            // Arrange
-            var jwtToken = "invalid token";
+			// Assert
+			Assert.NotNull(token.RefreshToken);
+		}
+		[Fact]
+		public void GenerateRefreshToken_Should_Return_RefreshToken()
+		{
+			// Arrange
+			var user = _fixture.Create<User>();
 
-            // Act
-            var isTokenValid = _jwtTokenGenerator.VerifyToken(jwtToken);
+			// Act
+			var refreshToken = _jwtTokenGenerator.GenerateRefreshToken(user);
 
-            // Assert
-            Assert.False(isTokenValid);
-        }
-    }
+			// Assert
+			Assert.NotNull(refreshToken);
+		}
+		[Fact]
+		public void VerifyToken_WithValidToken_ShouldReturnTrue()
+		{
+			// Arrange
+			var user = _fixture.Create<User>();
+
+			var token = _jwtTokenGenerator.GenerateToken(user);
+
+			// Act
+			var isTokenValid = _jwtTokenGenerator.VerifyToken(token.AccessToken);
+
+			// Assert
+			Assert.True(isTokenValid);
+		}
+		[Fact]
+		public void VerifyToken_WithInvalidToken_ShouldReturnFalse()
+		{
+			// Arrange
+			var jwtToken = "invalid token";
+
+			// Act
+			var isTokenValid = _jwtTokenGenerator.VerifyToken(jwtToken);
+
+			// Assert
+			Assert.False(isTokenValid);
+		}
+		[Fact]
+		public void VerifyRefreshToken_Should_Return_True_When_Token_Is_Valid()
+		{
+			// Arrange
+			var user = _fixture.Create<User>();
+			var refreshToken = _jwtTokenGenerator.GenerateRefreshToken(user);
+
+			// Act
+			var isValid = _jwtTokenGenerator.VerifyRefreshToken(refreshToken);
+
+			// Assert
+			Assert.True(isValid);
+		}
+
+		[Fact]
+		public void VerifyRefreshToken_Should_Return_False_When_Token_Is_Invalid()
+		{
+			// Arrange
+			var invalidToken = "invalid_refresh_token";
+
+			// Act
+			var isValid = _jwtTokenGenerator.VerifyRefreshToken(invalidToken);
+
+			// Assert
+			Assert.False(isValid);
+		}
+	}
 }

@@ -17,7 +17,7 @@ namespace Auth.Infrastructure.Authentication
             _jwtSettings = jwtOptions.Value;
         }
 
-        public string GenerateToken(User user)
+        public Token GenerateToken(User user)
         {
             var signingCredentials = new SigningCredentials(
                 new SymmetricSecurityKey(
@@ -31,17 +31,22 @@ namespace Auth.Infrastructure.Authentication
                 new Claim(JwtRegisteredClaimNames.FamilyName, user.LastName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
-
-            var SecurityToken = new JwtSecurityToken(
+            var expiration = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
+			var SecurityToken = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,
             audience: _jwtSettings.Audience,
-                expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
+                expires: expiration,
                 claims: claims,
                 signingCredentials: signingCredentials);
 
-            return new JwtSecurityTokenHandler().WriteToken(SecurityToken);
+            return new Token()
+            {
+                AccessToken = new JwtSecurityTokenHandler().WriteToken(SecurityToken),
+                Expiration = expiration,
+                RefreshToken = GenerateRefreshToken(user)
+            };
         }
-        public bool VerifyToken(string token)
+        public bool VerifyToken(string? token)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var validationParameters = new TokenValidationParameters
@@ -67,5 +72,62 @@ namespace Auth.Infrastructure.Authentication
                 return false;
             }
         }
-    }
+		public string GenerateRefreshToken(User user)
+		{
+			var signingCredentials = new SigningCredentials(
+				new SymmetricSecurityKey(
+					Encoding.UTF8.GetBytes(_jwtSettings.Secret)),
+				SecurityAlgorithms.HmacSha256);
+
+			var claims = new List<Claim>
+		{
+			new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+			new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+		};
+
+			var SecurityToken = new JwtSecurityToken(
+				issuer: _jwtSettings.Issuer,
+				audience: _jwtSettings.Audience,
+				expires: DateTime.UtcNow.AddMinutes(_jwtSettings.RefreshMinutes),
+				claims: claims,
+				signingCredentials: signingCredentials);
+
+			return new JwtSecurityTokenHandler().WriteToken(SecurityToken);
+		}
+		public bool VerifyRefreshToken(string refreshToken)
+		{
+			var tokenHandler = new JwtSecurityTokenHandler();
+			var validationParameters = new TokenValidationParameters
+			{
+				ValidateIssuerSigningKey = true,
+				IssuerSigningKey = new SymmetricSecurityKey(
+					Encoding.UTF8.GetBytes(_jwtSettings.Secret)),
+				ValidateIssuer = true,
+				ValidIssuer = _jwtSettings.Issuer,
+				ValidateAudience = true,
+				ValidAudience = _jwtSettings.Audience,
+				ValidateLifetime = false, // On ne vérifie pas l'expiration pour le token de rafraîchissement
+				ClockSkew = TimeSpan.Zero
+			};
+
+			try
+			{
+				tokenHandler.ValidateToken(refreshToken, validationParameters, out var validatedToken);
+
+				// Vérifier que le token est bien un JWT et qu'il a l'algorithme de signature HMACSHA256
+				if (!(validatedToken is JwtSecurityToken jwtSecurityToken) ||
+					!jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+				{
+					return false;
+				}
+
+				return true;
+			}
+			catch
+			{
+				return false;
+			}
+		}
+
+	}
 }

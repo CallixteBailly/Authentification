@@ -14,7 +14,8 @@ namespace Auth.Api.Common.Mapping
             config.NewConfig<RegisterRequest, RegisterCommand>();
             config.NewConfig<LoginRequest, LoginQuery>();
             config.NewConfig<AuthenticationResult, AuthenticationResponse>()
-                .Map(target => target, source => source.User);
+                .Map(target => target, source => source.User)
+                .Map(target => target.Token, source => source.Token);
             config.ForType<VerifyTokenRequest, VerifyTokenQuery>();
         }
     }

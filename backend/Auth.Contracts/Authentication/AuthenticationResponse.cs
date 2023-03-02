@@ -5,5 +5,12 @@ namespace Auth.Contracts.Authentication
         string FirstName,
         string LastName,
         string Email,
-        string Token);
+        Token Token);
+        
+    public class Token
+    {
+		public string? AccessToken { get; set; }
+		public string? RefreshToken { get; set; }
+		public DateTime Expiration { get; set; }
+	}
 }
