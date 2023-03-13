@@ -19,36 +19,35 @@
     }
 </style>
 
-<section >
+<section>
     <EditForm Model="@LoginRequest" OnValidSubmit="@SubmitAsync">
-    <DataAnnotationsValidator />
-    <div class="form-box">
-        <div class="form-value">
+        <DataAnnotationsValidator />
+        <div class="form-box">
+            <div class="form-value">
                 <h2>Login</h2>
                 <div class="inputbox">
                     <ion-icon name="mail-outline"></ion-icon>
                     <InputText type="text" id="email" class="form-control" @bind-Value="LoginRequest.Email" required />
                     <label for="">Email</label>
-                    <ValidationMessage For="@(() => LoginRequest.Email)" />
-
                 </div>
+                <ValidationMessage For="@(() => LoginRequest.Email)" />
                 <div class="inputbox">
                     <ion-icon name="lock-closed-outline"></ion-icon>
-                    <InputText type="password" id="password" class="form-control" @bind-Value="LoginRequest.Password" required/>
+                    <InputText type="password" id="password" class="form-control" @bind-Value="LoginRequest.Password"
+                        required />
                     <label for="">Password</label>
-                    <ValidationMessage For="@(() => LoginRequest.Password)" />
-
                 </div>
+                <ValidationMessage For="@(() => LoginRequest.Password)" />
                 <div class="forget">
-                    <label for=""><input type="checkbox">Remember Me  <a href="#">Forget Password</a></label>
+                    <label for=""><input type="checkbox">Remember Me <a href="#">Forget Password</a></label>
                 </div>
                 <button type="submit">Log in</button>
                 <div class="register">
                     <p>Don't have a account <a href="#">Register</a></p>
                 </div>
                 <div class="alert">@ErrorsResponse?.ToString()</div>
+            </div>
         </div>
-    </div>
     </EditForm>
 
 </section>
@@ -60,7 +59,7 @@
 
     private Timer? Timer { get; set; }
     private bool RememberMe { get; set; }
-    private string? BackgroundImage { get; set; } = "../img/image3.png";
+    private string? BackgroundImage { get; set; } = "../img/image1.png";
 
     protected override void OnInitialized()
     {
@@ -73,7 +72,7 @@
     private async Task SubmitAsync()
     {
         var loginResult = await AuthenticationService.AuthenticatedAsync(LoginRequest);
-        if(loginResult?.Errors == null)
+        if (loginResult?.Errors == null)
         {
             await JsRuntime.InvokeVoidAsync("localStorage.setItem", "token", loginResult?.Token?.AccessToken);
             var token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
@@ -103,8 +102,8 @@
         string[] extensionsAutorisees = { ".jpg", ".jpeg", ".png", ".gif" };
 
         string[] files = Directory.GetFiles(pathImages)
-            .Where(file => extensionsAutorisees.Contains(Path.GetExtension(file).ToLower()))
-            .ToArray();
+        .Where(file => extensionsAutorisees.Contains(Path.GetExtension(file).ToLower()))
+        .ToArray();
         Random random = new Random();
         var next = random.Next(files.Length);
 
