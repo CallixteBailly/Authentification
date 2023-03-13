@@ -1,0 +1,50 @@
+﻿@page "/Home"
+@using Blazor.Configuration;
+
+@inject UserState User
+@inject NavigationManager navigationManager
+@inject IJSRuntime JsRuntime
+
+
+<section>
+	<div class="home">
+		@if (User.IsAuthenticated)
+		{
+			<h1>You are connected</h1>
+
+			<div>
+				<label>Token </label>
+				<textarea>@User.Token</textarea>
+			</div>
+			<div>
+				<label>FirstName </label>
+				<input class="label-to-input" placeholder="@User.FirstName">
+			</div>
+
+			<div class="">
+				<label>LastName </label>
+				<input class="label-to-input" placeholder="@User.LastName">
+			</div>
+
+			<div>
+				<button @onclick="LogOut">Log out</button>
+			</div>
+		}
+		else
+		{
+			<NavLink class="nav-link" href="/">
+				You are not connected click here
+			</NavLink>
+		}
+	</div>
+</section>
+
+@code {
+	private async Task LogOut()
+	{
+		User.Reset();
+		await JsRuntime.InvokeVoidAsync("localStorage.clear");
+
+	}
+}
+

@@ -1,0 +1,119 @@
+﻿@page "/"
+@using Blazor.Models;
+@using Blazor.Services;
+@using System.IO
+@using System.Timers
+@using Microsoft.AspNetCore.Components.Forms
+
+@inject IJSRuntime JsRuntime
+@inject IAuthenticationService AuthenticationService
+@inject NavigationManager navigationManager
+
+<style>
+    body {
+        background: url(@BackgroundImage);
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-position: center;
+        transition: background-image 2s ease-in-out;
+    }
+</style>
+
+<section>
+    <EditForm Model="@LoginRequest" OnValidSubmit="@SubmitAsync">
+        <DataAnnotationsValidator />
+        <div class="form-box">
+            <div class="form-value">
+                <h2>Login</h2>
+                <div class="inputbox">
+                    <ion-icon name="mail-outline"></ion-icon>
+                    <InputText type="text" id="email" class="form-control" @bind-Value="LoginRequest.Email" required />
+                    <label for="">Email</label>
+                </div>
+                <ValidationMessage For="@(() => LoginRequest.Email)" />
+                <div class="inputbox">
+                    <ion-icon name="lock-closed-outline"></ion-icon>
+                    <InputText type="password" id="password" class="form-control" @bind-Value="LoginRequest.Password"
+                        required />
+                    <label for="">Password</label>
+                </div>
+                <ValidationMessage For="@(() => LoginRequest.Password)" />
+                <div class="forget">
+                    <label for=""><input type="checkbox">Remember Me <a href="#">Forget Password</a></label>
+                </div>
+                <button type="submit">Log in</button>
+                <div class="register">
+                    <p>Don't have a account <a href="#">Register</a></p>
+                </div>
+                <div class="alert">@ErrorsResponse?.ToString()</div>
+            </div>
+        </div>
+    </EditForm>
+
+</section>
+
+
+@code {
+    private LoginRequest LoginRequest = new();
+    private ErrorsResponse ErrorsResponse = new();
+
+    private Timer? Timer { get; set; }
+    private bool RememberMe { get; set; }
+    private string? BackgroundImage { get; set; } = "../img/image1.png";
+
+    protected override void OnInitialized()
+    {
+        Timer = new Timer(10000);
+        Timer.Elapsed += (sender, e) => ChangeBackground();
+        Timer.Start();
+
+    }
+
+    private async Task SubmitAsync()
+    {
+        var loginResult = await AuthenticationService.AuthenticatedAsync(LoginRequest);
+        if (loginResult?.Errors == null)
+        {
+            await JsRuntime.InvokeVoidAsync("localStorage.setItem", "token", loginResult?.Token?.AccessToken);
+            var token = await JsRuntime.InvokeAsync<string>("localStorage.getItem", "token");
+            var result = await AuthenticationService.IsAuthenticatedAsync(token);
+            if (result)
+            {
+                if (RememberMe)
+                {
+                    await JsRuntime.InvokeVoidAsync("localStorage.setItem", "rememberMe", "true");
+                    //TODO
+                }
+                navigationManager.NavigateTo("/Home");
+            }
+        }
+        else
+        {
+            ErrorsResponse = loginResult?.Errors ?? new ErrorsResponse();
+            navigationManager.NavigateTo("/");
+        }
+    }
+
+    private void ChangeBackground()
+    {
+        string rootpath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), "wwwroot");
+        string pathImages = Path.Combine(rootpath, "img");
+
+        string[] extensionsAutorisees = { ".jpg", ".jpeg", ".png", ".gif" };
+
+        string[] files = Directory.GetFiles(pathImages)
+        .Where(file => extensionsAutorisees.Contains(Path.GetExtension(file).ToLower()))
+        .ToArray();
+        Random random = new Random();
+        var next = random.Next(files.Length);
+
+        BackgroundImage = Path.Combine(@"../img/", $"{Path.GetFileName(files[next])}");
+
+        InvokeAsync(() => StateHasChanged());
+    }
+
+    public void Dispose()
+    {
+        Timer?.Dispose();
+    }
+}
