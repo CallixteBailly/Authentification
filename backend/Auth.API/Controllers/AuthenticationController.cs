@@ -6,7 +6,6 @@ using Auth.Contracts.Authentication;
 using Auth.API.Application.Commands;
 using Auth.Application.Queries.Login;
 using Auth.Application.Queries.VerifyToken;
-using Mapster;
 
 namespace Auth.Api.Controllers
 {
